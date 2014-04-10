@@ -16,5 +16,7 @@ install_base and msrc_base
 
 
 References:
-http://carrera.databits.net/~ksb/
-http://www.npcguild.org/
+* [http://carrera.databits.net/~ksb/](http://carrera.databits.net/~ksb/)
+* [http://www.npcguild.org/](http://www.npcguild.org/)
+* [apply(1)](http://www.freebsd.org/cgi/man.cgi?query=apply&apropos=0&sektion=0&manpath=FreeBSD+10.0-RELEASE&arch=default&format=html)
+* [xargs(1)](http://www.freebsd.org/cgi/man.cgi?query=xargs&apropos=0&sektion=0&manpath=FreeBSD+10.0-RELEASE&arch=default&format=html)

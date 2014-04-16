@@ -29,7 +29,7 @@ view: $(PROG).man
 	groff -Tascii -man $(PROG).man
 
 clean:
-	rm -f *.man $(PROG)
+	rm -f *.man $(PROG) *.pyc
 
 .py:
 	cat $< > $@

@@ -10,6 +10,28 @@ VERBOSE=0
 
 proctable = []
 
+class Mfitter:
+	def __init__(self, paths):
+		self.files = []
+		for p in paths:
+			self.files.append(open(p, 'r'))
+
+	def __iter__(self):
+		return self
+
+	def next(self):
+		n = []
+		done = 0
+		for f in self.files:
+			try:
+				n.append(f.next)
+			except StopIteration:
+				n.append("")
+				done = done + 1
+		if done >= len(self.files):
+			raise StopIteration
+		return n
+
 def is_int(s):
 	try:
 		int(s)
@@ -31,14 +53,20 @@ def dicer(intext, format):
 				select = str(select) + str(c)
 			elif c == "[":
 				diceon = 2
+			elif c == "%":
+				out = out + "%"
+				select = ""
+				diceon = 0
 			else:
 				diceon = 0
 				select = int(select) - 1
 				out = out + intext[select] + str(c)
+				select = ""
 		elif diceon == 2:
 			if is_int(c):
 				select = str(select) + str(c)
 			else:
+				echo "select"
 				select = int(select) - 1
 				seperator = str(c)
 				diceon = 4
@@ -78,18 +106,29 @@ def pargs():
 	parser.add_argument('-P', '--parallel', dest='parallel', type=int,
 			default=MAXJOBS,
 			help='Number of parallel jobs')
-	parser.add_argument('-i', '--input', dest='input',
-			type=argparse.FileType('r'),
-			default=sys.stdin,
-			help='input file (defaults to stdin)')
 	parser.add_argument('-v', '--verbose', dest='verbosity', action="count",
 			default=0, help='Increase verbosity')
 	parser.add_argument('-V', '--version', action='version',
 			version="papply version 0.1")
-	parser.add_argument('command', nargs='+')
+	parser.add_argument('-f', '--use-file', dest='usefile', action='store_true', default=False)
+	parser.add_argument('command')
+	parser.add_argument('input',
+			type=str, nargs="+",
+			help='input string(s) or file(s) if -f has been specified')
 	opts = parser.parse_args()
+
+	if opts.usefile:
+		opts.list = Mfitter(opts.input)
+	else:
+		# make a list of single item lists
+		# just to have the same structure as Mfitter
+		opts.list = []
+		for s in opts.input:
+			opts.list.append([s])
+
 	VERBOSE = opts.verbosity
 	MAXJOBS = opts.parallel
+
 	return opts
 
 def verbose(lvl, msg):
@@ -123,9 +162,8 @@ def waitout():
 def main():
 	opts = pargs()
 	cmd = " ".join(opts.command)
-	for line in opts.input:
-		line = line.rstrip()
-                icmd = dicer([line], cmd)
+	for item in opts.input:
+                icmd = dicer(item, cmd)
 		startjob(icmd)
 	waitout()
 

@@ -10,6 +10,66 @@ VERBOSE=0
 
 proctable = []
 
+def is_int(s):
+	try:
+		int(s)
+		return True
+	except ValueError:
+		return False
+
+def dicer(intext, format):
+	diceon = 0
+	select = ""
+	out = ""
+	field = ""
+	seperator =""
+	for c in format:
+		if c == "%":
+			diceon = 1
+		elif diceon == 1:
+			if is_int(c):
+				select = str(select) + str(c)
+			elif c == "[":
+				diceon = 2
+			else:
+				diceon = 0
+				select = int(select) - 1
+				out = out + intext[select] + str(c)
+		elif diceon == 2:
+			if is_int(c):
+				select = str(select) + str(c)
+			else:
+				select = int(select) - 1
+				seperator = str(c)
+				diceon = 4
+		elif diceon == 4:
+			field = c
+			diceon = 5
+		elif diceon == 5:
+			if is_int(c):
+				field = "%d%d" % (field, c)
+			elif c == "]":
+				field = int(field) - int(1)
+				out = str(out) + intext[select].split(seperator)[int(field)]
+				diceon = 0
+				field = ""
+				seperator =""
+				select = ""
+			else:
+				out = str(out) + "\%[1%d%d%c" % (seperator, field, c)
+				diceon = 0
+				field = ""
+				seperator =""
+				select = ""
+		else:
+			out = str(out) + str(c)
+
+	if diceon == 1:
+		select = int(select) - 1
+		out = out + intext[select]
+
+	return out
+
 def pargs():
 	global MAXJOBS
 	global VERBOSE
@@ -17,7 +77,7 @@ def pargs():
 	parser.add_argument('-P', '--parallel', dest='parallel', type=int,
 			default=MAXJOBS,
 			help='Number of parallel jobs')
-	parser.add_argument('-i', '--input', dest='input', 
+	parser.add_argument('-i', '--input', dest='input',
 			type=argparse.FileType('r'),
 			default=sys.stdin,
 			help='input file (defaults to stdin)')

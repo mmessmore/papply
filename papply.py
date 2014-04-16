@@ -50,7 +50,8 @@ def dicer(intext, format):
 				field = "%d%d" % (field, c)
 			elif c == "]":
 				field = int(field) - int(1)
-				out = str(out) + intext[select].split(seperator)[int(field)]
+                                if field < len(intext[select].split(seperator)):
+                                    out = str(out) + intext[select].split(seperator)[int(field)]
 				diceon = 0
 				field = ""
 				seperator =""

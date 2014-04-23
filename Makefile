@@ -1,6 +1,6 @@
 # Base Makefile
 PROG=papply
-DEST=~
+DEST=$(HOME)
 
 BINDIR=$(DEST)/bin
 MANDIR=$(DEST)/man/man1

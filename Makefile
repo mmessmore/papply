@@ -34,7 +34,7 @@ clean:
 	rm -f *.man $(PROG) *.pyc
 
 lint:
-	pylint $(PROG).py
+	pylint --rcfile=pylint.rc $(PROG).py
 
 .py:
 	cat $< > $@

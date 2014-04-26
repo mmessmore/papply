@@ -19,7 +19,13 @@ Operate over multiple files at the same time
 \f(CW$ papply \-f 'ln -s %1 %1"' filelist targetlist\fR
 
 [BUGS]
-Probably many.  Please report.
+Mostly things I haven't used.
+.TP
+My dicer is limited:  No %q.  No %t.  
+.TP
+No mixer
+.TP
+Probably many errors.  Please report.
 
 [AUTHOR]
 Michael Messmore <mike@messmore.org>

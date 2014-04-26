@@ -1,6 +1,7 @@
 # Base Makefile
 PROG=papply
 DEST?=$(HOME)
+PAGER?=less
 
 BINDIR=$(DEST)/bin
 MANDIR=$(DEST)/man/man1
@@ -28,7 +29,7 @@ papply.man: $(PROG) help2man.inc
 	help2man -s 1 -S messmore.org -I help2man.inc -N -o $(PROG).man --no-discard-stderr ./$(PROG)
 
 view: $(PROG).man
-	groff -Tascii -man $(PROG).man
+	groff -Tascii -man $(PROG).man | $(PAGER)
 
 clean:
 	rm -f *.man $(PROG) *.pyc

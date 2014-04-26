@@ -162,7 +162,38 @@ def is_int(text):
     except ValueError:
         return False
 
-def dicer(intext, fmat, i):
+def num_cpus():
+    """
+    Return the number of physical CPU cores
+
+    I intentionally don't do platform detection.  I just check to see if
+    the method works, in case someone else implements the same interface.
+
+    I don't want to think about how to do this on windows.
+    """
+    # This works on Linux (maybe elsewhere)
+    proc_path = '/proc/cpuinfo'
+    if os.path.isfile(proc_path):
+        cpuinfo = open(proc_path, 'r')
+        for line in cpuinfo:
+            # That's a tab
+            if line[0:9] == "cpu cores":
+                return int(line.split(':')[1].strip())
+
+    # This works on BSD, MacOS (maybe elsewhere)
+    else:
+        LOG.verbose(2, "No /proc/cpuinfo, trying sysctl")
+        try:
+            out = subprocess.check_output(['sysctl', 'hw.ncpu'])
+        except subprocess.CalledProcessError as ex:
+            # we got nothin, so we'll assume 1 core
+            msg = "Could not determine number of processors: %s exited %d" % \
+                (ex.cmd, ex.returncode)
+            LOG.verbose(2, msg)
+            return 1
+        return int(out.split(':')[1].strip())
+
+def dicer(intext, fmat, escape, i):
     """
     Emulate KSB's dicer
     This is a big ugly state machine... it's needs to be better
@@ -174,7 +205,7 @@ def dicer(intext, fmat, i):
     seperator = ""
 
     for char in fmat:
-        if char == "%":
+        if char == escape:
             diceon = 1
         elif diceon == 1:
             if is_int(char):
@@ -185,8 +216,8 @@ def dicer(intext, fmat, i):
                 diceon = 0
             elif char == "[":
                 diceon = 2
-            elif char == "%":
-                out = out + "%"
+            elif char == escape:
+                out = out + escape
                 select = ""
                 diceon = 0
             else:
@@ -239,14 +270,17 @@ def pargs():
     Parse Arguments
     """
     parser = argparse.ArgumentParser(description="Run jobs in parallel")
-    parser.add_argument('-P', '--parallel', dest='parallel', type=int,
-            default=8, help='Number of parallel jobs')
+    halp = 'Number of parallel jobs (default = number of cpu cores)'
+    parser.add_argument('-P', '--parallel', dest='parallel', metavar="jobs",
+            type=int, default=num_cpus(), help=halp)
     parser.add_argument('-v', '--verbose', dest='verbosity', action="count",
             default=0, help='Increase verbosity')
     parser.add_argument('-V', '--version', action='version',
             version="papply version 0.1")
     parser.add_argument('-f', '--use-file', dest='usefile',
             action='store_true', default=False)
+    parser.add_argument('-a', '--escape', dest='escape', metavar='c',
+            default='%', help='Escape character (default = %%)')
     parser.add_argument('command')
     parser.add_argument('input',
             type=str, nargs="+",
@@ -276,7 +310,7 @@ def main():
     i = 0
     for item in opts.list:
         i += 1
-        cmd = dicer(item, opts.command, i)
+        cmd = dicer(item, opts.command, opts.escape, i)
         pjob.startjob(cmd)
     pjob.waitout()
 

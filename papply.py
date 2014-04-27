@@ -10,7 +10,7 @@ import sys
 import argparse
 import time
 
-version=0.1
+VERSION = 0.1
 
 class Dicer(object):
     """
@@ -255,12 +255,13 @@ class Mfitter(object):
     """
     Multi-file iterator
     """
-    def __init__(self, paths):
+    def __init__(self, paths, padding):
         """
         Takes:
             list of paths
         """
         self.files = []
+        self.padding = padding
         for path in paths:
             if path == "-":
                 self.files.append(sys.stdin)
@@ -291,7 +292,7 @@ class Mfitter(object):
             try:
                 out.append(mfile.next())
             except StopIteration:
-                out.append("")
+                out.append(self.padding)
                 done = done + 1
         if done >= len(self.files):
             raise StopIteration
@@ -342,14 +343,19 @@ def pargs():
     """
     Parse Arguments
     """
-    parser = argparse.ArgumentParser(description="Run jobs in parallel")
+    prog = "papply"
+    parser = argparse.ArgumentParser(program=prog,
+            description="Run jobs in parallel")
     halp = 'Number of parallel jobs (default = number of cpu cores)'
     parser.add_argument('-P', '--parallel', dest='parallel', metavar="jobs",
             type=int, default=num_cpus(), help=halp)
+    parser.add_argument('-p', '--padding', dest='padding',
+            type=str, default="",
+            help="string to pad files with when they lack input")
     parser.add_argument('-v', '--verbose', dest='verbosity', action="count",
             default=0, help='Increase verbosity')
     parser.add_argument('-V', '--version', action='version',
-            version='%(prog)s %s' % version)
+            version='%s %s' % (prog, VERSION))
     parser.add_argument('-f', '--use-file', dest='usefile',
             action='store_true', default=False)
     parser.add_argument('-a', '--escape', dest='escape', metavar='c',
@@ -361,7 +367,7 @@ def pargs():
     opts = parser.parse_args()
 
     if opts.usefile:
-        opts.list = Mfitter(opts.input)
+        opts.list = Mfitter(opts.input, opts.padding)
     else:
         # make a list of single item lists
         # just to have the same structure as Mfitter

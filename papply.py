@@ -53,20 +53,25 @@ class Dicer(object):
         """
         If no format string is specified assume that we're appending a la xargs
         """
-        append = False
         escape_on = False
-        for char in value:
-            if not escape_on:
-                if char == self.escape:
-                    escape_on = True
-                    continue
-            if char == self.escape:
-                escape_on = False
-                continue
-            append = True
 
-        if append:
-            self._fmat = value + " " + self.escape + "1"
+        # Assume we don't need to do anything
+        self._fmat = value
+
+        # Bail if we find an escape followed by anything other than another one
+        for char in value:
+            if escape_on:
+                if char == self.escape:
+                    escape_on = False
+                    continue
+                else:
+                    return True
+
+            if char == self.escape:
+                escape_on = True
+
+        # If we haven't found a valid escape sequence by now, tack one on
+        self._fmat = "%s %s1" % (value, self.escape)
 
     def dice(self, intext):
         """

@@ -344,7 +344,7 @@ def pargs():
     Parse Arguments
     """
     prog = "papply"
-    parser = argparse.ArgumentParser(program=prog,
+    parser = argparse.ArgumentParser(name=prog,
             description="Run jobs in parallel")
     halp = 'Number of parallel jobs (default = number of cpu cores)'
     parser.add_argument('-P', '--parallel', dest='parallel', metavar="jobs",

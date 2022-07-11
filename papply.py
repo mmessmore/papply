@@ -10,6 +10,7 @@ import sys
 import argparse
 import time
 
+version=0.1
 
 class Dicer(object):
     """
@@ -348,7 +349,7 @@ def pargs():
     parser.add_argument('-v', '--verbose', dest='verbosity', action="count",
             default=0, help='Increase verbosity')
     parser.add_argument('-V', '--version', action='version',
-            version="papply version 0.1")
+            version='%(prog)s %s' % version)
     parser.add_argument('-f', '--use-file', dest='usefile',
             action='store_true', default=False)
     parser.add_argument('-a', '--escape', dest='escape', metavar='c',

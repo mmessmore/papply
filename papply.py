@@ -124,7 +124,7 @@ def main():
 	cmd = " ".join(opts.command)
 	for line in opts.input:
 		line = line.rstrip()
-		icmd = cmd.replace("%1", line)
+                icmd = dicer([line], cmd)
 		startjob(icmd)
 	waitout()
 

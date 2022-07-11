@@ -1,12 +1,24 @@
 # Base Makefile
 PROG=papply
+DEST=~
 
 BINDIR=$(DEST)/bin
+MANDIR=$(DEST)/man/man1
+
+DIRS=$(BINDIR) $(MANDIR)
 
 all: $(PROG) man
 
-install: $(PROG) man
+install: $(DIRS) $(PROG) man
 	install -m 755 $(PROG) $(BINDIR)/
+	install -m 755 $(PROG).man $(MANDIR)
+
+deinstall:
+	rm -f $(BINDIR)/$(PROG)
+	rm -f $(MANDIR)/$(PROG).man
+
+$(DIRS):
+	install -d $@
 
 man: $(PROG).man
 

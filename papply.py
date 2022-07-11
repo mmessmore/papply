@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Attempt at a drop-in replacement for KSB's excellent xapply
+Sad attempt at a drop-in replacement for KSB's excellent xapply
 """
 
 import os
@@ -9,6 +9,143 @@ import signal
 import sys
 import argparse
 import time
+
+
+class Dicer(object):
+    """
+    Emulate KSB's dicer
+    Working on de-uglying it
+    """
+    def __init__(self, fmat="", escape='%'):
+        # just make pylint happy
+        self._fmat = ""
+        # making these attributes so I can refactor dice later
+        self._diceon = 0
+        self._select = ""
+
+        # Our configurable escape sequence
+        self.escape = escape
+        # Set the format string with the setter
+        self.fmat = fmat
+        # Number of iterations (for %u expansion)
+        self.i = 1
+
+
+    def reset(self, fmat, escape):
+        """
+        Start over without reinstantiating
+        """
+        self.escape = escape
+        # Set the format string with the setter
+        self.fmat = fmat
+        # Number of iterations (for %u expansion)
+        self.i = 1
+
+    @property
+    def fmat(self):
+        """
+        Just return the private attribute
+        """
+        return self._fmat
+
+    @fmat.setter
+    def fmat(self, value):
+        """
+        If no format string is specified assume that we're appending a la xargs
+        """
+        append = False
+        escape_on = False
+        for char in value:
+            if not escape_on:
+                if char == self.escape:
+                    escape_on = True
+                    continue
+            if char == self.escape:
+                escape_on = False
+                continue
+            append = True
+
+        if append:
+            self._fmat = value + " " + self.escape + "1"
+
+    def dice(self, intext):
+        """
+        Do the work
+        """
+
+        # keep track of state
+        self._diceon = 0
+        # which input stream
+        self._select = ""
+        # seperator character
+        seperator = ""
+        # which field
+        field = ""
+
+        # our output
+        out = ""
+
+        for char in self.fmat:
+            if char == self.escape:
+                self._diceon = 1
+            elif self._diceon == 1:
+                if is_int(char):
+                    self._select = str(self._select) + str(char)
+                elif char == "u":
+                    out += str(self.i)
+                    self._select = ""
+                    self._diceon = 0
+                elif char == "[":
+                    self._diceon = 2
+                elif char == self.escape:
+                    out = out + self.escape
+                    self._select = ""
+                    self._diceon = 0
+                else:
+                    self._diceon = 0
+                    self._select = int(self._select) - 1
+                    out = out + intext[self._select].rstrip() + char
+                    self._select = ""
+            elif self._diceon == 2:
+                if is_int(char):
+                    self._select = str(self._select) + str(char)
+                else:
+                    self._select = int(self._select) - 1
+                    seperator = str(char)
+                    if char == ' ':
+                        seperator = None
+                    self._diceon = 4
+            elif self._diceon == 4:
+                field = char
+                self._diceon = 5
+            elif self._diceon == 5:
+                if is_int(char):
+                    field = "%d%d" % (field, char)
+                elif char == "]":
+                    field = int(field) - int(1)
+                    if field < len(intext[self._select].split(seperator)):
+                        text = intext[self._select].split(seperator)[int(field)]
+                        out = str(out) + text.rstrip()
+                    self._diceon = 0
+                    field = ""
+                    seperator = ""
+                    self._select = ""
+                else:
+                    out = str(out) + "%%[1%d%d%c" % (seperator, field, char)
+                    self._diceon = 0
+                    field = ""
+                    seperator = ""
+                    self._select = ""
+            else:
+                out = str(out) + str(char)
+
+        # Clean up if we end on a substitution
+        if self._diceon == 1:
+            self._select = int(self._select) - 1
+            out = out + intext[self._select]
+
+        self.i += 1
+        return out
 
 class MLogger(object):
     """
@@ -192,6 +329,7 @@ def num_cpus():
             LOG.verbose(2, msg)
             return 1
         return int(out.split(':')[1].strip())
+
 
 def dicer(intext, fmat, escape, i):
     """

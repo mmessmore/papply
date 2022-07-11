@@ -117,7 +117,10 @@ class Mfitter(object):
         """
         self.files = []
         for path in paths:
-            self.files.append(open(path, 'r'))
+            if path == "-":
+                self.files.append(sys.stdin)
+            else:
+                self.files.append(open(path, 'r'))
 
     def __iter__(self):
         """
@@ -193,6 +196,8 @@ def dicer(intext, fmat):
             else:
                 select = int(select) - 1
                 seperator = str(char)
+                if char == ' ':
+                    seperator = None
                 diceon = 4
         elif diceon == 4:
             field = char

@@ -13,7 +13,7 @@ proctable = []
 def pargs():
 	global MAXJOBS
 	global VERBOSE
-	parser = argparse.ArgumentParser(description="Run jobs")
+	parser = argparse.ArgumentParser(description="Run jobs in parallel")
 	parser.add_argument('-P', '--parallel', dest='parallel', type=int,
 			default=MAXJOBS,
 			help='Number of parallel jobs')
@@ -23,6 +23,8 @@ def pargs():
 			help='input file (defaults to stdin)')
 	parser.add_argument('-v', '--verbose', dest='verbosity', action="count",
 			default=0, help='Increase verbosity')
+	parser.add_argument('-V', '--version', action='version',
+			version="papply version 0.1")
 	parser.add_argument('command', nargs='+')
 	opts = parser.parse_args()
 	VERBOSE = opts.verbosity
@@ -56,8 +58,6 @@ def waitout():
 			except OSError:
 				proctable.remove((pid,pcmd))
 				verbose(2, "%s: finished!" % (str(pcmd)))
-
-
 
 def main():
 	opts = pargs()

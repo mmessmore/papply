@@ -33,6 +33,9 @@ class Mfitter(object):
         return self
 
     def reset(self):
+        """
+        seek all inputs back to 0
+        """
         for mfile in self.files:
             mfile.seek(0)
 
@@ -45,7 +48,7 @@ class Mfitter(object):
         done = 0
         for mfile in self.files:
             try:
-                out.append(mfile.next)
+                out.append(mfile.next())
             except StopIteration:
                 out.append("")
                 done = done + 1
@@ -66,14 +69,15 @@ def is_int(text):
 def dicer(intext, fmat):
     """
     Emulate KSB's dicer
+    This is a big ugly state machine... it's needs to be better
     """
     diceon = 0
     select = ""
     out = ""
     field = ""
     seperator = ""
+
     for char in fmat:
-        print "char:", char
         if char == "%":
             diceon = 1
         elif diceon == 1:
@@ -88,7 +92,7 @@ def dicer(intext, fmat):
             else:
                 diceon = 0
                 select = int(select) - 1
-                out = out + intext[select] + str(char)
+                out = out + intext[select].rstrip() + char
                 select = ""
         elif diceon == 2:
             if is_int(char):
@@ -106,7 +110,8 @@ def dicer(intext, fmat):
             elif char == "]":
                 field = int(field) - int(1)
                 if field < len(intext[select].split(seperator)):
-                    out = str(out) + intext[select].split(seperator)[int(field)]
+                    text = intext[select].split(seperator)[int(field)]
+                    out = str(out) + text.rstrip()
                 diceon = 0
                 field = ""
                 seperator = ""
@@ -120,6 +125,7 @@ def dicer(intext, fmat):
         else:
             out = str(out) + str(char)
 
+    # Clean up if we end on a substitution
     if diceon == 1:
         select = int(select) - 1
         out = out + intext[select]
@@ -183,7 +189,7 @@ def startjob(cmd):
                     verbose(2, "%s: finished!" % (str(pcmd)))
         else:
             break
-    verbose(1, "%s: start" % (str(cmd)))
+    verbose(1, "%s" % (str(cmd)))
     PROCTABLE.append((subprocess.Popen(cmd, shell=True).pid, cmd))
 
 def waitout():
@@ -203,10 +209,9 @@ def main():
     Do Stuff
     """
     opts = pargs()
-    cmd = " ".join(opts.command)
-    for item in opts.input:
-        icmd = dicer(item, cmd)
-        startjob(icmd)
+    for item in opts.list:
+        cmd = dicer(item, opts.command)
+        startjob(cmd)
     waitout()
 
 if __name__ == '__main__':

@@ -33,6 +33,9 @@ view: $(PROG).man
 clean:
 	rm -f *.man $(PROG) *.pyc
 
+lint:
+	pylint $(PROG).py
+
 .py:
 	cat $< > $@
 	chmod 775 $@

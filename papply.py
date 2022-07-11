@@ -162,7 +162,7 @@ def is_int(text):
     except ValueError:
         return False
 
-def dicer(intext, fmat):
+def dicer(intext, fmat, i):
     """
     Emulate KSB's dicer
     This is a big ugly state machine... it's needs to be better
@@ -179,6 +179,10 @@ def dicer(intext, fmat):
         elif diceon == 1:
             if is_int(char):
                 select = str(select) + str(char)
+            elif char == "u":
+                out += str(i)
+                select = ""
+                diceon = 0
             elif char == "[":
                 diceon = 2
             elif char == "%":
@@ -269,8 +273,10 @@ def main():
     """
     opts = pargs()
     pjob = ParaDo(opts.parallel)
+    i = 0
     for item in opts.list:
-        cmd = dicer(item, opts.command)
+        i += 1
+        cmd = dicer(item, opts.command, i)
         pjob.startjob(cmd)
     pjob.waitout()
 

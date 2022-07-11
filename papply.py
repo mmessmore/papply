@@ -5,13 +5,106 @@ Attempt at a drop-in replacement for KSB's excellent xapply
 
 import os
 import subprocess
+import signal
 import sys
 import argparse
+import time
 
-MAXJOBS = 8
-VERBOSE = 0
+class MLogger(object):
+    """
+    Do logging
+    """
 
-PROCTABLE = []
+    def __init__(self, verbosity=0, error=sys.stderr, out=sys.stdout):
+        self.verbosity = verbosity
+        # grab just the name of the process, not the full path
+        self.name = sys.argv[0]
+        self.name = self.name.split('/')[-1]
+
+        self.error = error
+        self.out = out
+
+    def verbose(self, level, msg):
+        """
+        Print a message based on verbosity
+        """
+        if self.verbosity > level:
+            self.error.write("%s: %s\n" % (self.name, msg))
+
+    def message(self, msg):
+        """
+        Unconditionallu print a message
+        """
+        self.out.write("%s: %s\n" % (self.name, msg))
+
+class ParaDo(object):
+    """
+    Managed Parallelized Processes.
+
+    Basically keep X number of plates spinning.
+    """
+    def __init__(self, maxjobs):
+        """
+        Takes:
+            number of jobs to run in parallel
+        """
+        self.maxjobs = maxjobs
+        self.jobs = []
+
+
+    def startjob(self, cmd):
+        """
+        Kick off jobs in parallel
+        """
+        while True:
+            if len(self.jobs) >= self.maxjobs:
+                for (pid, pcmd) in self.jobs:
+                    try:
+                        os.waitpid(pid, os.WNOHANG)
+                    except OSError:
+                        self.jobs.remove((pid, pcmd))
+                        LOG.verbose(2, "%s: finished!" % (str(pcmd)))
+            else:
+                break
+        LOG.verbose(1, "%s" % (str(cmd)))
+        self.jobs.append((subprocess.Popen(cmd, shell=True).pid, cmd))
+
+    def waitout(self):
+        """
+        Make sure all of our kids are gone
+        """
+        while len(self.jobs) > 0:
+            for (pid, pcmd) in self.jobs:
+                try:
+                    os.waitpid(pid, os.WNOHANG)
+                except OSError:
+                    self.jobs.remove((pid, pcmd))
+                    LOG.verbose(2, "%s: finished!" % (str(pcmd)))
+
+    def kill(self):
+        """
+        Kill off my children
+        """
+        shot = []
+
+        while len(self.jobs) > 0:
+            for (pid, pcmd) in self.jobs:
+                try:
+                    os.waitpid(pid, os.WNOHANG)
+                except OSError:
+                    self.jobs.remove((pid, pcmd))
+                    LOG.verbose(2, "%s: finished!" % (str(pcmd)))
+
+                # TERM then KILL each
+                mysig = signal.SIGTERM
+                if pid in shot:
+                    mysig = signal.SIGKILL
+                    LOG.verbose(2,
+                            "Shooting pid %s with signal %d" % (pid, mysig))
+                shot.append(pid)
+                os.kill(pid, mysig)
+                time.sleep(1)
+
 
 class Mfitter(object):
     """
@@ -136,12 +229,9 @@ def pargs():
     """
     Parse Arguments
     """
-    global MAXJOBS
-    global VERBOSE
     parser = argparse.ArgumentParser(description="Run jobs in parallel")
     parser.add_argument('-P', '--parallel', dest='parallel', type=int,
-            default=MAXJOBS,
-            help='Number of parallel jobs')
+            default=8, help='Number of parallel jobs')
     parser.add_argument('-v', '--verbose', dest='verbosity', action="count",
             default=0, help='Increase verbosity')
     parser.add_argument('-V', '--version', action='version',
@@ -163,56 +253,22 @@ def pargs():
         for text in opts.input:
             opts.list.append([text])
 
-    VERBOSE = opts.verbosity
-    MAXJOBS = opts.parallel
+    LOG.verbosity = opts.verbosity
 
     return opts
 
-def verbose(lvl, msg):
-    """
-    Print stuff based on verbosity
-    """
-    if VERBOSE >= lvl:
-        sys.stderr.write(msg + "\n")
-
-def startjob(cmd):
-    """
-    Kick off jobs in parallel
-    """
-    while True:
-        if len(PROCTABLE) >= MAXJOBS:
-            for (pid, pcmd) in PROCTABLE:
-                try:
-                    os.waitpid(pid, os.WNOHANG)
-                except OSError:
-                    PROCTABLE.remove((pid, pcmd))
-                    verbose(2, "%s: finished!" % (str(pcmd)))
-        else:
-            break
-    verbose(1, "%s" % (str(cmd)))
-    PROCTABLE.append((subprocess.Popen(cmd, shell=True).pid, cmd))
-
-def waitout():
-    """
-    Make sure all of our kids are gone
-    """
-    while len(PROCTABLE) > 0:
-        for (pid, pcmd) in PROCTABLE:
-            try:
-                os.waitpid(pid, os.WNOHANG)
-            except OSError:
-                PROCTABLE.remove((pid, pcmd))
-                verbose(2, "%s: finished!" % (str(pcmd)))
 
 def main():
     """
     Do Stuff
     """
     opts = pargs()
+    pjob = ParaDo(opts.parallel)
     for item in opts.list:
         cmd = dicer(item, opts.command)
-        startjob(cmd)
-    waitout()
+        pjob.startjob(cmd)
+    pjob.waitout()
 
 if __name__ == '__main__':
+    LOG = MLogger()
     main()

@@ -1,6 +1,5 @@
 Noted things to implement:
 * -count (will need to be different I guess)
-* support for completely missing the %1 a la xargs
 * %q in the dicer
 * mixer?
 * environment diddling (-e)

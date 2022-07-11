@@ -226,6 +226,8 @@ class ParaDo(object):
     def kill(self):
         """
         Kill off my children
+
+        Really just in theory.  Unused
         """
         shot = []
 
@@ -335,79 +337,6 @@ def num_cpus():
             return 1
         return int(out.split(':')[1].strip())
 
-
-def dicer(intext, fmat, escape, i):
-    """
-    Emulate KSB's dicer
-    This is a big ugly state machine... it's needs to be better
-    """
-    diceon = 0
-    select = ""
-    out = ""
-    field = ""
-    seperator = ""
-
-    for char in fmat:
-        if char == escape:
-            diceon = 1
-        elif diceon == 1:
-            if is_int(char):
-                select = str(select) + str(char)
-            elif char == "u":
-                out += str(i)
-                select = ""
-                diceon = 0
-            elif char == "[":
-                diceon = 2
-            elif char == escape:
-                out = out + escape
-                select = ""
-                diceon = 0
-            else:
-                diceon = 0
-                select = int(select) - 1
-                out = out + intext[select].rstrip() + char
-                select = ""
-        elif diceon == 2:
-            if is_int(char):
-                select = str(select) + str(char)
-            else:
-                select = int(select) - 1
-                seperator = str(char)
-                if char == ' ':
-                    seperator = None
-                diceon = 4
-        elif diceon == 4:
-            field = char
-            diceon = 5
-        elif diceon == 5:
-            if is_int(char):
-                field = "%d%d" % (field, char)
-            elif char == "]":
-                field = int(field) - int(1)
-                if field < len(intext[select].split(seperator)):
-                    text = intext[select].split(seperator)[int(field)]
-                    out = str(out) + text.rstrip()
-                diceon = 0
-                field = ""
-                seperator = ""
-                select = ""
-            else:
-                out = str(out) + "%%[1%d%d%c" % (seperator, field, char)
-                diceon = 0
-                field = ""
-                seperator = ""
-                select = ""
-        else:
-            out = str(out) + str(char)
-
-    # Clean up if we end on a substitution
-    if diceon == 1:
-        select = int(select) - 1
-        out = out + intext[select]
-
-    return out
-
 def pargs():
     """
     Parse Arguments
@@ -450,10 +379,9 @@ def main():
     """
     opts = pargs()
     pjob = ParaDo(opts.parallel)
-    i = 0
+    dice = Dicer(opts.command, opts.escape)
     for item in opts.list:
-        i += 1
-        cmd = dicer(item, opts.command, opts.escape, i)
+        cmd = dice.dice(item)
         pjob.startjob(cmd)
     pjob.waitout()
 

@@ -7,6 +7,8 @@ MANDIR=$(DEST)/man/man1
 
 DIRS=$(BINDIR) $(MANDIR)
 
+.SUFFIXES: .py
+
 all: $(PROG) man
 
 install: $(DIRS) $(PROG) man
@@ -35,4 +37,3 @@ clean:
 	cat $< > $@
 	chmod 775 $@
 
-.SUFFIXES: .py

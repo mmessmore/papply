@@ -11,4 +11,3 @@ Noted things to implement:
 * alternate input other than /dev/null to commands (-i)
 * coalation without xclate? (-m)
 * while-else idiom support (-N)
-* padding for inadequate-length files (-p)

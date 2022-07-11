@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Sad attempt at a drop-in replacement for KSB's excellent xapply
 """
@@ -10,14 +10,16 @@ import sys
 import argparse
 import time
 
-VERSION = 0.1
+VERSION = 0.2
+
 
 class Dicer(object):
     """
     Emulate KSB's dicer
     Working on de-uglying it
     """
-    def __init__(self, fmat="", escape='%'):
+
+    def __init__(self, fmat="", escape="%"):
         # just make pylint happy
         self._fmat = ""
         # making these attributes so I can refactor dice later
@@ -30,7 +32,6 @@ class Dicer(object):
         self.fmat = fmat
         # Number of iterations (for %u expansion)
         self.i = 1
-
 
     def reset(self, fmat, escape):
         """
@@ -72,7 +73,7 @@ class Dicer(object):
                 escape_on = True
 
         # If we haven't found a valid escape sequence by now, tack one on
-        self._fmat = "%s %s1" % (value, self.escape)
+        self._fmat = f"{value} {self.escape}"
 
     def dice(self, intext):
         """
@@ -109,7 +110,11 @@ class Dicer(object):
                     self._diceon = 0
                 else:
                     self._diceon = 0
-                    self._select = int(self._select) - 1
+                    try:
+                        self._select = int(self._select) - 1
+                    except ValueError:
+                        print("Invalid escape character")
+                        sys.exit(1)
                     out = out + intext[self._select].rstrip() + char
                     self._select = ""
             elif self._diceon == 2:
@@ -118,15 +123,15 @@ class Dicer(object):
                 else:
                     self._select = int(self._select) - 1
                     seperator = str(char)
-                    if char == ' ':
+                    if char == " ":
                         seperator = None
-                    self._diceon = 4
+                        self._diceon = 4
             elif self._diceon == 4:
                 field = char
                 self._diceon = 5
             elif self._diceon == 5:
                 if is_int(char):
-                    field = "%d%d" % (field, char)
+                    field = f"{field}{char}"
                 elif char == "]":
                     field = int(field) - int(1)
                     if field < len(intext[self._select].split(seperator)):
@@ -137,7 +142,7 @@ class Dicer(object):
                     seperator = ""
                     self._select = ""
                 else:
-                    out = str(out) + "%%[1%d%d%c" % (seperator, field, char)
+                    out = str(out) + f"%[1{seperator}{field}{char}"
                     self._diceon = 0
                     field = ""
                     seperator = ""
@@ -153,6 +158,7 @@ class Dicer(object):
         self.i += 1
         return out
 
+
 class MLogger(object):
     """
     Do logging
@@ -162,7 +168,7 @@ class MLogger(object):
         self.verbosity = verbosity
         # grab just the name of the process, not the full path
         self.name = sys.argv[0]
-        self.name = self.name.split('/')[-1]
+        self.name = self.name.split("/")[-1]
 
         self.error = error
         self.out = out
@@ -172,28 +178,29 @@ class MLogger(object):
         Print a message based on verbosity
         """
         if self.verbosity > level:
-            self.error.write("%s: %s\n" % (self.name, msg))
+            self.error.write(f"{self.name}: {msg}\n")
 
     def message(self, msg):
         """
-        Unconditionallu print a message
+        Unconditionally print a message
         """
-        self.out.write("%s: %s\n" % (self.name, msg))
+        self.out.write(f"{self.name}: {msg}\n")
+
 
 class ParaDo(object):
     """
     Managed Parallelized Processes.
 
-    Basically keep X number of plates spinning.
+    Keep X number of plates spinning.
     """
+
     def __init__(self, maxjobs):
         """
         Takes:
-            number of jobs to run in parallel
+        number of jobs to run in parallel
         """
         self.maxjobs = maxjobs
         self.jobs = []
-
 
     def startjob(self, cmd):
         """
@@ -206,10 +213,10 @@ class ParaDo(object):
                         os.waitpid(pid, os.WNOHANG)
                     except OSError:
                         self.jobs.remove((pid, pcmd))
-                        LOG.verbose(2, "%s: finished!" % (str(pcmd)))
+                        LOG.verbose(2, f"{pcmd}: finished!")
             else:
                 break
-        LOG.verbose(1, "%s" % (str(cmd)))
+        LOG.verbose(1, f"{cmd}")
         self.jobs.append((subprocess.Popen(cmd, shell=True).pid, cmd))
 
     def waitout(self):
@@ -222,7 +229,7 @@ class ParaDo(object):
                     os.waitpid(pid, os.WNOHANG)
                 except OSError:
                     self.jobs.remove((pid, pcmd))
-                    LOG.verbose(2, "%s: finished!" % (str(pcmd)))
+                    LOG.verbose(2, f"{pcmd}: finished!")
 
     def kill(self):
         """
@@ -238,14 +245,13 @@ class ParaDo(object):
                     os.waitpid(pid, os.WNOHANG)
                 except OSError:
                     self.jobs.remove((pid, pcmd))
-                    LOG.verbose(2, "%s: finished!" % (str(pcmd)))
+                    LOG.verbose(2, f"{pcmd}: finished!")
 
                 # TERM then KILL each
                 mysig = signal.SIGTERM
                 if pid in shot:
                     mysig = signal.SIGKILL
-                    LOG.verbose(2,
-                            "Shooting pid %s with signal %d" % (pid, mysig))
+                    LOG.verbose(2, f"Shooting pid {pid} with signal {mysig}")
                 shot.append(pid)
                 os.kill(pid, mysig)
                 time.sleep(1)
@@ -255,6 +261,7 @@ class Mfitter(object):
     """
     Multi-file iterator
     """
+
     def __init__(self, paths, padding):
         """
         Takes:
@@ -266,7 +273,7 @@ class Mfitter(object):
             if path == "-":
                 self.files.append(sys.stdin)
             else:
-                self.files.append(open(path, 'r'))
+                self.files.append(open(path, "r"))
 
     def __iter__(self):
         """
@@ -290,13 +297,14 @@ class Mfitter(object):
         done = 0
         for mfile in self.files:
             try:
-                out.append(mfile.next())
+                out.append(next(mfile))
             except StopIteration:
                 out.append(self.padding)
                 done = done + 1
         if done >= len(self.files):
             raise StopIteration
         return out
+
 
 def is_int(text):
     """
@@ -308,6 +316,7 @@ def is_int(text):
     except ValueError:
         return False
 
+
 def num_cpus():
     """
     Return the number of physical CPU cores
@@ -318,52 +327,47 @@ def num_cpus():
     I don't want to think about how to do this on windows.
     """
     # This works on Linux (maybe elsewhere)
-    proc_path = '/proc/cpuinfo'
+    proc_path = "/proc/cpuinfo"
     if os.path.isfile(proc_path):
-        cpuinfo = open(proc_path, 'r')
+        cpuinfo = open(proc_path, "r")
         for line in cpuinfo:
             # That's a tab
             if line[0:9] == "cpu cores":
-                return int(line.split(':')[1].strip())
+                return int(line.split(":")[1].strip())
 
     # This works on BSD, MacOS (maybe elsewhere)
     else:
         LOG.verbose(2, "No /proc/cpuinfo, trying sysctl")
         try:
-            out = subprocess.check_output(['sysctl', 'hw.ncpu'])
+            out = subprocess.check_output(["sysctl", "hw.ncpu"])
         except subprocess.CalledProcessError as ex:
             # we got nothin, so we'll assume 1 core
-            msg = "Could not determine number of processors: %s exited %d" % \
-                (ex.cmd, ex.returncode)
+            msg = f"Could not determine number of processors: {ex.cmd} exited {ex.returncode}"
             LOG.verbose(2, msg)
             return 1
-        return int(out.split(':')[1].strip())
+        out = out.decode("utf-8")
+        return int(out.split(":")[1].strip())
+
 
 def pargs():
     """
     Parse Arguments
     """
     prog = "papply"
-    parser = argparse.ArgumentParser(prog=prog,
-             description="Run jobs in parallel")
-    halp = 'Number of parallel jobs (default = number of cpu cores)'
-    parser.add_argument('-P', '--parallel', dest='parallel', metavar="jobs",
-            type=int, default=num_cpus(), help=halp)
-    parser.add_argument('-p', '--padding', dest='padding',
-            type=str, default="",
-            help="string to pad files with when they lack input")
-    parser.add_argument('-v', '--verbose', dest='verbosity', action="count",
-            default=0, help='Increase verbosity')
-    parser.add_argument('-V', '--version', action='version',
-            version='%s %s' % (prog, VERSION))
-    parser.add_argument('-f', '--use-file', dest='usefile',
-            action='store_true', default=False)
-    parser.add_argument('-a', '--escape', dest='escape', metavar='c',
-            default='%', help='Escape character (default = %%)')
-    parser.add_argument('command')
-    parser.add_argument('input',
-            type=str, nargs="+",
-            help='input string(s) or file(s) if -f has been specified')
+    parser = argparse.ArgumentParser(prog=prog, description="Run jobs in parallel")
+    halp = "Number of parallel jobs (default = number of cpu cores)"
+    parser.add_argument("-P", "--parallel", dest="parallel", metavar="jobs", type=int, default=num_cpus(), help=halp)
+    parser.add_argument(
+        "-p", "--padding", dest="padding", type=str, default="", help="string to pad files with when they lack input"
+    )
+    parser.add_argument("-v", "--verbose", dest="verbosity", action="count", default=0, help="Increase verbosity")
+    parser.add_argument("-V", "--version", action="version", version=f"{prog} {VERSION}")
+    parser.add_argument("-f", "--use-file", dest="usefile", action="store_true", default=False)
+    parser.add_argument(
+        "-a", "--escape", dest="escape", metavar="c", default="%", help="Escape character (default = %)"
+    )
+    parser.add_argument("command")
+    parser.add_argument("input", type=str, nargs="+", help="input string(s) or file(s) if -f has been specified")
     opts = parser.parse_args()
 
     if opts.usefile:
@@ -392,6 +396,7 @@ def main():
         pjob.startjob(cmd)
     pjob.waitout()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     LOG = MLogger()
     main()

@@ -25,7 +25,7 @@ $(DIRS):
 man: $(PROG).man
 
 papply.man: $(PROG) help2man.inc
-	help2man -s 1 -S messmore.org -i help2man.inc -N  -o $(PROG).man --no-discard-stderr ./$(PROG)
+	help2man -s 1 -S messmore.org -I help2man.inc -N -o $(PROG).man --no-discard-stderr ./$(PROG)
 
 view: $(PROG).man
 	groff -Tascii -man $(PROG).man
